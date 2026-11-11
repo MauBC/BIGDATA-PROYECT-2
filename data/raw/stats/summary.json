@@ -1,0 +1,220 @@
+{
+  "status": "validated_snapshot",
+  "repo_id": "mashu-data/reddit-comments-sample",
+  "generated_at": "2026-09-12T14:48:06+00:00",
+  "snapshot_at": 1789224486,
+  "planned_post_date_range_utc": [
+    "2026-05-31T16:00:00+00:00",
+    "2026-08-31T16:00:00+00:00"
+  ],
+  "post_window_end_exclusive": true,
+  "date_range_utc": [
+    "2026-05-31T16:04:12+00:00",
+    "2026-08-31T15:58:30+00:00"
+  ],
+  "comment_date_range_utc": [
+    "2026-05-31T16:14:46+00:00",
+    "2026-09-12T03:02:24+00:00"
+  ],
+  "crawl_interval_utc": [
+    "2026-09-12T05:59:45+00:00",
+    "2026-09-12T11:57:26+00:00"
+  ],
+  "posts": 43913,
+  "comments": 59874,
+  "subreddits": {
+    "LocalLLaMA": {
+      "posts": 3778,
+      "comments": 21850,
+      "zero_comment_posts": 695,
+      "post_date_range_utc": [
+        "2026-05-31T16:13:21+00:00",
+        "2026-08-31T15:31:52+00:00"
+      ],
+      "comment_date_range_utc": [
+        "2026-05-31T16:50:33+00:00",
+        "2026-09-12T03:02:24+00:00"
+      ],
+      "max_depth": 15,
+      "depth_distribution": {
+        "0": 10535,
+        "1": 5686,
+        "2": 2708,
+        "3": 1470,
+        "4": 712,
+        "5": 386,
+        "6": 197,
+        "7": 101,
+        "8": 35,
+        "9": 14,
+        "10": 1,
+        "11": 1,
+        "12": 1,
+        "13": 1,
+        "14": 1,
+        "15": 1
+      },
+      "deleted_ratio": 0.009565217391304347,
+      "removed_ratio": 0.007643020594965675,
+      "missing_parent_count": 0
+    },
+    "wallstreetbets": {
+      "posts": 10310,
+      "comments": 12500,
+      "zero_comment_posts": 8419,
+      "post_date_range_utc": [
+        "2026-05-31T16:17:43+00:00",
+        "2026-08-31T15:53:36+00:00"
+      ],
+      "comment_date_range_utc": [
+        "2026-05-31T17:37:52+00:00",
+        "2026-09-07T22:41:38+00:00"
+      ],
+      "max_depth": 10,
+      "depth_distribution": {
+        "0": 7857,
+        "1": 2884,
+        "2": 1014,
+        "3": 426,
+        "4": 154,
+        "5": 89,
+        "6": 41,
+        "7": 19,
+        "8": 10,
+        "9": 5,
+        "10": 1
+      },
+      "deleted_ratio": 0.0068,
+      "removed_ratio": 0.00416,
+      "missing_parent_count": 0
+    },
+    "SkincareAddiction": {
+      "posts": 29825,
+      "comments": 25524,
+      "zero_comment_posts": 23157,
+      "post_date_range_utc": [
+        "2026-05-31T16:04:12+00:00",
+        "2026-08-31T15:58:30+00:00"
+      ],
+      "comment_date_range_utc": [
+        "2026-05-31T16:14:46+00:00",
+        "2026-09-11T20:22:05+00:00"
+      ],
+      "max_depth": 9,
+      "depth_distribution": {
+        "0": 18843,
+        "1": 4203,
+        "2": 1446,
+        "3": 587,
+        "4": 265,
+        "5": 108,
+        "6": 44,
+        "7": 20,
+        "8": 7,
+        "9": 1
+      },
+      "deleted_ratio": 0.003957060021940135,
+      "removed_ratio": 0.0036436295251527973,
+      "missing_parent_count": 0
+    }
+  },
+  "selection_method": "All active-batch posts marked done after excluding placeholder comment IDs. All their stored comments are retained. This favors small and zero-comment threads and is not a representative subreddit sample.",
+  "crawl_method": "Existing local Reddit business API backed by multiple third-party providers; stored initial and continuation responses merged by post/comment ID.",
+  "anonymization_policy": "No additional anonymization. Public source usernames and text are retained when supplied; missing or unsupported scalar fields are null. No credentials, private messages, raw responses or media files are included.",
+  "tree_completeness_verified": false,
+  "structural_checks_passed": true,
+  "validation": {
+    "post_scope": true,
+    "unique_comment_ids": true,
+    "resolved_parents": true,
+    "acyclic": true,
+    "depth_recomputed_from_parents": true,
+    "unresolved_expansion_count": 0,
+    "collected_counts_match_candidate_expected": true,
+    "limitation": "Checks apply to selected stored records; they do not prove upstream recall or complete subreddit coverage."
+  },
+  "known_gaps": [
+    "Historical discovery is incomplete and currently paused because its provider restricted access.",
+    "Review posts and their comments are excluded. Dates are observed endpoints, not proof of gap-free coverage.",
+    "Deleted/removed content and moderator or bot replies may be present. Text is not filtered or truncated.",
+    "Comments may be newer than the selected post interval. Displayed post counts and collection timestamps are different snapshots."
+  ],
+  "null_counts": {
+    "posts": {
+      "url": 472,
+      "flair": 9513
+    },
+    "comments": {
+      "is_submitter": 32282,
+      "permalink": 8094,
+      "author": 67
+    }
+  },
+  "files": [
+    {
+      "path": "data/posts/subreddit=LocalLLaMA/part-0.parquet",
+      "rows": 3778,
+      "bytes": 1528552,
+      "sha256": "57643e425aad8816c1c566c224db96ff5cd777d40ad8ed28624e8aa00de59146"
+    },
+    {
+      "path": "data/comments/subreddit=LocalLLaMA/part-0.parquet",
+      "rows": 21850,
+      "bytes": 2762857,
+      "sha256": "1fb31e91c3ab84f14a2dd5695f6516683c2d4754b55ca6996843062552938fee"
+    },
+    {
+      "path": "data/posts/subreddit=wallstreetbets/part-0.parquet",
+      "rows": 10310,
+      "bytes": 1641302,
+      "sha256": "6603175820b186d7d21c6a57a43a3100475b858c8b3907fb14a2eeffd314b24b"
+    },
+    {
+      "path": "data/comments/subreddit=wallstreetbets/part-0.parquet",
+      "rows": 12500,
+      "bytes": 928742,
+      "sha256": "b17bbc52d645777d276de66b939f8e2fc8ecfd353a098b2b7624ec410c37a52a"
+    },
+    {
+      "path": "data/posts/subreddit=SkincareAddiction/part-0.parquet",
+      "rows": 25000,
+      "bytes": 3166071,
+      "sha256": "392f4a312b430f5021a5426473d0f3e5114060e08379ca7fa57b5d38349eae40"
+    },
+    {
+      "path": "data/posts/subreddit=SkincareAddiction/part-1.parquet",
+      "rows": 4825,
+      "bytes": 655524,
+      "sha256": "4a907b6a8c0f96467768b400bff9c5df517c862cb090b8fcf6e8fa0b28911eac"
+    },
+    {
+      "path": "data/comments/subreddit=SkincareAddiction/part-0.parquet",
+      "rows": 25000,
+      "bytes": 2639867,
+      "sha256": "424f01f75ced169aa33fd8768a9fa9b88533832ee20cfdb70df64155a320576a"
+    },
+    {
+      "path": "data/comments/subreddit=SkincareAddiction/part-1.parquet",
+      "rows": 524,
+      "bytes": 64675,
+      "sha256": "ba69ba52b30d78c19b986a17a7a174c4a545cbdb9576cacfa6008800a4b3b3bb"
+    }
+  ],
+  "local_readers_verified": [
+    "datasets",
+    "pandas",
+    "duckdb"
+  ],
+  "manual_comment_sample_count": 24,
+  "remote_readers_verified": [
+    "datasets",
+    "pandas",
+    "duckdb"
+  ],
+  "viewer_configs_verified": [
+    "posts",
+    "comments"
+  ],
+  "validated_data_revision": "28f3a79a323cbb994f55c04481a1c87551f5c315",
+  "duckdb_loading_method": "Download one public HF shard to the local cache, then query it with DuckDB."
+}

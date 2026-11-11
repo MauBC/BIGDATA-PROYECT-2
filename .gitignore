@@ -1,0 +1,15 @@
+# Configuración privada y entornos locales
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Datos intermedios y caché de descarga
+data/staging/
+**/.cache/
+*.log
+.DS_Store
+Thumbs.db

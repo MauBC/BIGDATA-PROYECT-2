@@ -1,0 +1,8 @@
+# Dependencias para dashboard, scripts de creación, CRUD y ETL ejecutados fuera de Airflow
+pandas==2.2.3
+pyarrow==18.1.0
+pymongo==4.10.1
+cassandra-driver==3.29.2
+neo4j==5.27.0
+streamlit==1.50.0
+plotly==5.24.1
