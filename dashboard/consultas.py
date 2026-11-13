@@ -85,6 +85,16 @@ def top_posts(subreddits: tuple, desde: str, hasta: str, n: int = 10) -> pd.Data
 
 
 @st.cache_data(ttl=TTL)
+def conversacion_por_post(subreddits: tuple, desde: str, hasta: str) -> dict:
+    """Posts publicados en el rango y comentarios anidados que recibieron (hasta el corte del dataset)."""
+    with mongo_db() as db:
+        r = next(db.posts.aggregate([
+            {"$match": {"subreddit": {"$in": list(subreddits)}, "fecha": {"$gte": desde, "$lte": hasta}}},
+            {"$group": {"_id": None, "posts": {"$sum": 1}, "comentarios": {"$sum": {"$size": "$comments"}}}}]), None)
+    return {"posts": r["posts"], "comentarios": r["comentarios"]} if r else {"posts": 0, "comentarios": 0}
+
+
+@st.cache_data(ttl=TTL)
 def flairs(subreddits: tuple, desde: str, hasta: str) -> pd.DataFrame:
     with mongo_db() as db:
         cur = db.posts.aggregate([
@@ -126,9 +136,11 @@ def etl_runs() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=TTL)
-def rechazados_por_motivo() -> pd.DataFrame:
+def rechazados_por_motivo(subreddits: tuple, desde: str, hasta: str) -> pd.DataFrame:
     with mongo_db() as db:
-        cur = db.rechazados.aggregate([{"$group": {"_id": {"motivo": "$motivo", "subreddit": "$subreddit"}, "n": {"$sum": 1}}}])
+        cur = db.rechazados.aggregate([
+            {"$match": {"subreddit": {"$in": list(subreddits)}, "fecha": {"$gte": desde, "$lte": hasta}}},
+            {"$group": {"_id": {"motivo": "$motivo", "subreddit": "$subreddit"}, "n": {"$sum": 1}}}])
         return pd.DataFrame([{**r["_id"], "registros": r["n"]} for r in cur])
 
 

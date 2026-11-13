@@ -22,9 +22,9 @@ def read_day(kind: str, fecha: str) -> pd.DataFrame:
     return _dataset(kind).to_table(filter=filtro).to_pandas()
 
 
-def all_post_ids() -> set[str]:
-    """Ids de todos los posts del dataset (para validar integridad referencial de los comentarios)."""
-    return set(_dataset("posts").to_table(columns=["id"]).column("id").to_pylist())
+def all_posts() -> pd.DataFrame:
+    """Campos obligatorios de todos los posts del dataset (para validar integridad referencial de los comentarios)."""
+    return _dataset("posts").to_table(columns=["id", "created_utc", "title", "subreddit"]).to_pandas()
 
 
 def run(fecha: str) -> dict:
