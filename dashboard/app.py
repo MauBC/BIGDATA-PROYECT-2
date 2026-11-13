@@ -53,6 +53,46 @@ def grafico(fig, **kw):
     st.plotly_chart(fig, use_container_width=True, theme=None, config={"displayModeBar": False}, **kw)
 
 
+# Cómo se resume cada KPI en el período: razones de sumas (ponderadas por volumen), no promedio de promedios diarios.
+RESUMEN = {
+    "registros_procesados": "suma del período",
+    "crecimiento_actividad_pct": "mediana diaria de la actividad conjunta de las comunidades elegidas",
+    "comentarios_por_post": "Σ comentarios / Σ posts, en días con posts",
+    "actividad_por_usuario": "promedio diario ponderado por autores únicos",
+    "tasa_eliminados_pct": "Σ eliminados / Σ comentarios",
+    "profundidad_media": "Σ profundidad / Σ comentarios",
+    "score_medio_post": "Σ score / Σ posts",
+    "max_conexiones_usuario": "acumulado al último día del rango · global, sin filtro de comunidad",
+}
+
+
+def valor_periodo(clave: str, serie: pd.DataFrame, act: pd.DataFrame) -> str:
+    def razon(num, den, escala=1.0):
+        return f"{num / den * escala:,.2f}" if den else "–"
+
+    if clave == "registros_procesados":
+        return f"{serie['valor'].sum():,.0f}"
+    if clave == "max_conexiones_usuario":
+        return f"{serie.sort_values('fecha')['valor'].iloc[-1]:,.0f} usuarios"
+    if clave == "crecimiento_actividad_pct":
+        diario = act.groupby("fecha")[["posts", "comentarios"]].sum().sum(axis=1).asfreq("D")
+        g = (diario.pct_change(fill_method=None) * 100).replace([float("inf"), -float("inf")], float("nan")).dropna()
+        return f"{g.median():+,.1f} %" if len(g) else "–"
+    if clave == "comentarios_por_post":
+        con_posts = act[act["posts"] > 0]
+        return razon(con_posts["comentarios"].sum(), con_posts["posts"].sum())
+    if clave == "score_medio_post":
+        return razon(act["score_posts"].sum(), act["posts"].sum())
+    if clave == "tasa_eliminados_pct":
+        return razon(act["comentarios_eliminados"].sum(), act["comentarios"].sum(), 100) + " %"
+    if clave == "profundidad_media":
+        return razon((act["profundidad_media"] * act["comentarios"]).sum(), act["comentarios"].sum())
+    if clave == "actividad_por_usuario":
+        m = serie.merge(act[["fecha", "subreddit", "autores_unicos"]], on=["fecha", "subreddit"])
+        return razon((m["valor"] * m["autores_unicos"]).sum(), m["autores_unicos"].sum())
+    return f"{serie['valor'].mean():,.2f}"
+
+
 # ---------------- filtros ----------------
 with st.sidebar:
     st.header("Filtros")
@@ -86,12 +126,14 @@ if act.empty:
 
 # ---------------- tarjetas resumen ----------------
 n_posts, n_coms = int(act["posts"].sum()), int(act["comentarios"].sum())
+conv = q.conversacion_por_post(S, D, H)
 c = st.columns(5)
 c[0].metric("Registros procesados", f"{n_posts + n_coms:,}", help=KPI_DEFS["registros_procesados"]["definicion"])
 c[1].metric("Posts", f"{n_posts:,}")
 c[2].metric("Comentarios", f"{n_coms:,}")
-c[3].metric("Comentarios por post", f"{n_coms / n_posts:.2f}" if n_posts else "–",
-            help=KPI_DEFS["comentarios_por_post"]["definicion"])
+c[3].metric("Comentarios por post publicado", f"{conv['comentarios'] / conv['posts']:.2f}" if conv["posts"] else "–",
+            help="MongoDB: comentarios válidos anidados (recibidos hasta el 12-sep) en los posts publicados en el "
+                 "rango, dividido entre esos posts. A diferencia de la razón diaria, sigue a cada publicación.")
 c[4].metric("Comentarios eliminados", f"{act['comentarios_eliminados'].sum() / n_coms * 100:.1f} %" if n_coms else "–",
             help=KPI_DEFS["tasa_eliminados_pct"]["definicion"])
 
@@ -101,7 +143,8 @@ tab_kpi, tab_act, tab_cont, tab_red, tab_etl = st.tabs(
 # ---------------- KPIs ----------------
 with tab_kpi:
     st.caption("Cada KPI se calcula automáticamente en la etapa 6 del DAG y se guarda en Cassandra "
-               "(`kpis_por_nombre`). Valor del período = suma para volúmenes, promedio diario para el resto.")
+               "(`kpis_por_nombre`). El valor del período pondera por volumen (razón de sumas sobre "
+               "`actividad_diaria_por_subreddit`), no promedia los valores diarios; el método figura bajo cada valor.")
     for clave, meta in KPI_DEFS.items():
         serie = kpis[kpis["kpi"] == clave]
         solo_global = clave == "max_conexiones_usuario"
@@ -110,17 +153,10 @@ with tab_kpi:
             izq, der = st.columns([2, 3], gap="large")
             with izq:
                 st.subheader(meta["nombre"])
-                if serie.empty:
-                    st.metric("Valor del período", "–")
-                else:
-                    if clave == "registros_procesados":
-                        valor = f"{serie['valor'].sum():,.0f}"
-                    elif solo_global:
-                        valor = f"{serie['valor'].max():,.0f} usuarios"
-                    else:
-                        base = serie.groupby("fecha")["valor"].mean()
-                        valor = f"{base.mean():,.2f}" + (" %" if clave.endswith("_pct") else "")
-                    st.metric("Valor del período", valor)
+                st.metric("Valor del período", "–" if serie.empty else valor_periodo(clave, serie, act))
+                st.caption(RESUMEN[clave])
+                if solo_global and len(subs) < len(SUBREDDITS):
+                    st.caption("⚠️ Este KPI no responde al filtro de subreddits: siempre es el de la red completa.")
                 st.markdown(f"**Definición.** {meta['definicion']}")
                 st.markdown(f"**Fórmula.** `{meta['formula']}`")
                 st.markdown(f"**Interpretación.** {meta['interpretacion']}")
@@ -182,6 +218,8 @@ with tab_cont:
                      column_config={"title": st.column_config.TextColumn("título", width="large"),
                                     "comentarios": st.column_config.ProgressColumn(
                                         "comentarios", format="%d", min_value=0, max_value=int(tp["comentarios"].max()))})
+    else:
+        st.info("No hay posts publicados en el rango (los posts del dataset terminan el 31-ago).")
     a, b = st.columns(2)
     with a:
         st.markdown("**Profundidad de los hilos** · % de comentarios por nivel")
@@ -204,6 +242,8 @@ with tab_cont:
                          category_orders={"flair": total.index.tolist()})
             fig.update_layout(barmode="stack")
             grafico(estilo(fig), key="flairs")
+        else:
+            st.info("Sin posts con flair en el rango.")
 
 # ---------------- Red (Neo4j) ----------------
 with tab_red:
@@ -216,6 +256,8 @@ with tab_red:
                                     ("COMENTA", rg["relaciones"].get("COMENTA", 0)),
                                     ("RESPONDE_A", rg["relaciones"].get("RESPONDE_A", 0))]):
         col.metric(et, f"{n:,}")
+    st.caption("Totales del grafo completo (no dependen de los filtros). El ranking y la red de abajo sí se "
+               "filtran por rango y subreddit.")
 
     a, b = st.columns([2, 3], gap="large")
     with a:
@@ -278,7 +320,7 @@ with tab_etl:
         a, b = st.columns([1, 2])
         with a:
             st.markdown("**Rechazados por motivo**")
-            rech = q.rechazados_por_motivo()
+            rech = q.rechazados_por_motivo(S, D, H)
             if not rech.empty:
                 st.dataframe(rech.pivot_table(index="subreddit", columns="motivo", values="registros", fill_value=0),
                              use_container_width=True)

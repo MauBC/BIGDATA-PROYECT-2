@@ -176,6 +176,8 @@ services:
       <<: *airflow-depends
       airflow-init:
         condition: service_completed_successfully
+      db-init:  # el DAG no debe correr antes de que existan esquemas, índices y constraints
+        condition: service_completed_successfully
 
   # ---------------- Dashboard ----------------
   dashboard:
@@ -197,12 +199,8 @@ services:
       - ./dashboard:/app/dashboard
       - ./etl:/app/etl
     depends_on:
-      mongodb:
-        condition: service_healthy
-      cassandra:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
 
 volumes:
   mongo-data:

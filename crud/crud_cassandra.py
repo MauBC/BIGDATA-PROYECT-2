@@ -70,7 +70,7 @@ def main():
         imprimir(s.execute("SELECT subreddit, fecha, posts, comentarios, autores_unicos FROM actividad_diaria_por_subreddit "
                            "WHERE subreddit = 'LocalLLaMA' LIMIT 5"))
 
-        paso("SELECT", "KPI 'comentarios_por_post' global en un rango de fechas (tabla kpis_por_nombre)")
+        paso("SELECT", "KPI 'comentarios_por_post' (razón diaria) global en un rango de fechas (tabla kpis_por_nombre)")
         imprimir(s.execute("SELECT fecha, valor FROM kpis_por_nombre WHERE kpi = 'comentarios_por_post' AND subreddit = 'ALL' "
                            "AND fecha >= '2026-07-01' AND fecha <= '2026-07-05'"))
 

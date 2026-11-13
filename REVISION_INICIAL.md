@@ -54,3 +54,21 @@ El enunciado fija la entrega para el 17 de noviembre de 2026 y solicita además 
 6. Verificar visualmente el dashboard, revisar el informe tras las mejoras y preparar el video grupal. El PDF se leyó por extracción de texto; no se certificó su maquetación visual.
 
 Esta entrega es una base inicial para continuar el desarrollo; no una certificación de funcionamiento integral.
+
+## Actualización — 13 de noviembre de 2026
+
+Detalle, comandos y evidencia en [VERIFICACION.md](VERIFICACION.md). Estado de los pendientes anteriores:
+
+1. ✅ Docker arrancado; instalación limpia, contenedores, CRUD, consultas y DAG completo ejecutados.
+2. ✅ Backfill reproducido desde bases vacías (105/105 ejecuciones); conteos iguales a la fuente y al informe;
+   reproceso del 15-jul sin diferencias en IDs, relaciones ni KPIs.
+3. ✅ Corregido: cada ejecución reemplaza la porción de su día en MongoDB, Neo4j, `rechazados` y KPIs, y
+   recalcula el crecimiento del día siguiente. Los efectos sobre otros días se resuelven reprocesándolos.
+4. ✅ Corregido: KPI renombrado como razón diaria, nueva métrica de comentarios por post publicado
+   (MongoDB), valores del período ponderados y aviso de KPI global.
+5. ✅ Imágenes y versiones efectivas verificadas; el scheduler y el dashboard ahora esperan a `db-init`.
+6. ⚠️ Dashboard verificado con `AppTest` y contra las bases, pero no a la vista. Quedan por hacer el
+   informe actualizado (lista en VERIFICACION.md §7) y el video grupal.
+
+Además se corrigió la pérdida silenciosa de comentarios cuando se procesaba un día antes que el de sus
+posts (el comando manual del README empezaba el 01-jun).

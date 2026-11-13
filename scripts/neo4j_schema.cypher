@@ -15,6 +15,9 @@ CREATE CONSTRAINT subreddit_nombre IF NOT EXISTS FOR (s:Subreddit) REQUIRE s.nom
 CREATE INDEX post_fecha IF NOT EXISTS FOR (p:Post) ON (p.fecha);
 CREATE INDEX comentario_fecha IF NOT EXISTS FOR (c:Comentario) ON (c.fecha);
 CREATE INDEX post_score IF NOT EXISTS FOR (p:Post) ON (p.score);
+// post_id / parent_id permiten enlazar comentarios ya cargados cuando su post o padre llega después.
+CREATE INDEX comentario_post_id IF NOT EXISTS FOR (c:Comentario) ON (c.post_id);
+CREATE INDEX comentario_parent_id IF NOT EXISTS FOR (c:Comentario) ON (c.parent_id);
 
 // Nodos fijos: los 3 subreddits del dataset.
 UNWIND ['LocalLLaMA', 'wallstreetbets', 'SkincareAddiction'] AS nombre
