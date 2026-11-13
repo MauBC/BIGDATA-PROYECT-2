@@ -1,0 +1,15 @@
+# Proyecto aislado para pruebas destructivas: volúmenes propios, sin nombres fijos ni puertos publicados.
+# Uso: docker compose -p bigdata-test -f docker-compose.yml -f scripts/verificacion/compose.prueba.yml up -d db-init
+# Detener antes el stack principal si Docker tiene poca RAM (docker compose stop).
+services:
+  mongodb:
+    container_name: !reset null
+    ports: !reset []
+  cassandra:
+    container_name: !reset null
+    ports: !reset []
+  neo4j:
+    container_name: !reset null
+    ports: !reset []
+  db-init:
+    container_name: !reset null
