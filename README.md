@@ -1,123 +1,144 @@
-# Proyecto Grupal II – Big Data (UTEC)
+# Pipeline multimodelo de Big Data sobre Reddit
 
-Pipeline multimodelo sobre una muestra de Reddit: **parquet → Airflow → MongoDB + Cassandra + Neo4j → Streamlit**.
+Proyecto Grupal II · Big Data · Facultad de Computación · UTEC
 
-| Documento | Contenido |
+Pipeline que toma una muestra de Reddit, la limpia y la reparte en tres bases NoSQL según el tipo de consulta
+que mejor resuelve cada una. Un DAG de Airflow orquesta la carga día por día y un dashboard en Streamlit
+muestra los indicadores.
+
+```
+parquet  →  Airflow (6 etapas)  →  MongoDB + Cassandra + Neo4j  →  Streamlit
+```
+
+## Integrantes
+
+- Bobadilla Castillo, Mauro
+- Huaman Casma, Leonardo Fabian
+- Mora Huamanchay, Angel Obed
+- Rondan Cantaro, Lisseth Jomely
+- Sobenes Obregon, Carlos Sebastian
+
+## Entregables
+
+| Entregable | Ubicación |
 |---|---|
-| `Informe_Tecnico_Reddit_BigData.pdf` | Informe técnico. Es anterior a las mejoras del 13-nov; los cambios pendientes están en `VERIFICACION.md` §7 |
-| [MEJORAS.md](MEJORAS.md) | Resumen de las mejoras y correcciones del 13-nov |
-| [VERIFICACION.md](VERIFICACION.md) | Pruebas reproducidas con sus comandos y resultados |
-| [REVISION_INICIAL.md](REVISION_INICIAL.md) | Revisión inicial y estado de sus pendientes |
+| Informe técnico | `Informe_Tecnico_Reddit_BigData.pdf` |
+| Código fuente | `etl/`, `dags/`, `crud/`, `dashboard/` |
+| Scripts de creación de las bases | `scripts/` |
+| DAG de Airflow | `dags/reddit_etl_dag.py` |
+| Dashboard | `dashboard/app.py` |
+| Video demostrativo | _(agregar enlace)_ |
+
+## Dataset
+
+[mashu-data/reddit-comments-sample](https://huggingface.co/datasets/mashu-data/reddit-comments-sample)
+(Hugging Face, licencia CC BY-NC 4.0): 43,913 posts y 59,874 comentarios (103,787 registros) de r/LocalLLaMA,
+r/wallstreetbets y r/SkincareAddiction, entre el 31 de mayo y el 12 de septiembre de 2026. Ya viene incluido en
+`data/raw/`, con su ficha original (`data/raw/README.md`), así que no hace falta descargarlo.
+
+## Qué guarda cada base
+
+| Base | Contenido | Por qué |
+|---|---|---|
+| MongoDB | Cada post con sus comentarios anidados, bitácora de ejecuciones y registros rechazados | Un hilo completo se lee en una sola consulta |
+| Cassandra | Actividad diaria y por hora, ranking de autores y KPIs por fecha | Series temporales leídas por partición, ya ordenadas por fecha |
+| Neo4j | Usuarios, posts, comentarios y quién responde a quién | Las conexiones entre usuarios son recorridos de grafo |
 
 ## Requisitos
-- Docker Desktop (Windows/macOS/Linux) con **≥ 8 GB de RAM** asignados.
-- Puertos libres: 8080, 8501, 7474, 7687, 9042, 27017.
-- Dataset ya descargado en `data/raw/` ([mashu-data/reddit-comments-sample](https://huggingface.co/datasets/mashu-data/reddit-comments-sample)).
+
+- Docker Desktop con al menos 8 GB de RAM asignados.
+- Puertos libres: 8080, 8501, 7474, 7687, 9042 y 27017.
 
 ## Puesta en marcha
-Copiar `.env.example` a `.env` antes del primer arranque (`Copy-Item .env.example .env` en PowerShell). Si ya existe `.env`, conservarlo. Las credenciales de ejemplo son únicamente para desarrollo local.
 
-```bash
+```powershell
+Copy-Item .env.example .env      # solo la primera vez
 docker compose up -d --build
 ```
-Esto levanta MongoDB, Cassandra, Neo4j, Airflow (Postgres + webserver + scheduler) y el dashboard.
-El servicio `db-init` crea automáticamente los esquemas de las 3 bases (idempotente) y termina; el
-scheduler de Airflow y el dashboard esperan a que termine bien antes de arrancar.
-La primera vez tarda unos minutos (descarga de imágenes y arranque de Cassandra).
 
-| Servicio | URL | Credenciales (valores de `.env.example`) |
+Esto levanta MongoDB, Cassandra, Neo4j, Airflow (con Postgres) y el dashboard. El servicio `db-init` crea los
+esquemas de las tres bases y termina; Airflow y el dashboard esperan a que acabe. La primera vez tarda varios
+minutos.
+
+| Servicio | URL | Usuario / contraseña |
 |---|---|---|
 | Airflow | http://localhost:8080 | admin / admin |
 | Dashboard | http://localhost:8501 | – |
 | Neo4j Browser | http://localhost:7474 | neo4j / neo4j12345 |
 | MongoDB | mongodb://localhost:27017 | admin / admin123 |
-| Cassandra | localhost:9042 (cqlsh) | – |
+| Cassandra | localhost:9042 | – |
+
+Las credenciales son de desarrollo local (`.env.example`).
 
 ## Ejecutar el pipeline
-1. Abrir Airflow y activar el DAG `reddit_etl` (está pausado al crearse).
-2. Con `catchup=True` se generan 105 ejecuciones (2026-05-31 → 2026-09-12), una por día, en orden.
-   Tiempo total observado: ~21 min (unos 11 s por día).
-3. Re-procesar un día: en la vista *Grid*, seleccionar la ejecución → **Clear**. La carga es idempotente:
-   con la misma fuente se obtienen los mismos IDs, conteos y KPIs.
 
-### Reproceso con datos corregidos
-Cada ejecución **reemplaza la porción de su día** en las tres bases: elimina los posts y comentarios de esa
-fecha que dejaron de ser válidos (con sus nodos y relaciones en Neo4j), reemplaza los `rechazados` del día,
-borra los KPIs del día antes de escribirlos y recalcula el crecimiento del día siguiente.
-Hay efectos sobre **otros días** que no se rehacen solos: comentarios posteriores de un post eliminado o
-restaurado y el KPI acumulado de conexiones. En ese caso, reprocesar también los días siguientes:
-```bash
+1. En Airflow, activar el DAG `reddit_etl` (se crea pausado).
+2. Con `catchup=True` se generan 105 ejecuciones, una por día del 31-may al 12-sep, que corren en orden.
+   El histórico completo tarda unos 21 minutos.
+3. Para reprocesar un día: vista *Grid* → seleccionar la ejecución → **Clear**. La carga es idempotente.
+   Si el día reprocesado afecta a los siguientes, se reprocesan también:
+
+```powershell
 docker compose exec airflow-scheduler airflow tasks clear reddit_etl -s 2026-07-15 -e 2026-09-12 -y
 ```
 
-### Ejecución manual sin Airflow (útil para pruebas)
-Empezar siempre en el **2026-05-31**: los comentarios se anidan en posts de días anteriores y, si el post
-todavía no está cargado, la etapa de MongoDB falla para no perder comentarios en silencio.
-```bash
-docker compose exec -w /opt/airflow airflow-scheduler python -m etl.pipeline 2026-05-31 2026-06-02
-```
-El comando manual y el DAG escriben en **las mismas bases y el mismo staging** (`data/staging/`). Para no
-mezclar una prueba con el histórico, usar un staging propio (`-e STAGING_DIR=/tmp/stg_prueba`) y vaciar
-las bases antes y después de la prueba.
+Ejecución manual sin Airflow (empezar siempre el 2026-05-31, porque los comentarios necesitan que su post ya
+esté cargado):
 
-Vaciar los datos (conserva esquemas) para volver a empezar; también borra `data/staging/`:
-```bash
-docker compose run --rm db-init -m scripts.reset_databases
+```powershell
+docker compose exec -w /opt/airflow airflow-scheduler python -m etl.pipeline 2026-05-31 2026-06-02
 ```
 
 ## Demos CRUD
-```bash
+
+```powershell
 docker compose exec -w /opt/airflow airflow-scheduler python -m crud.crud_mongo
 docker compose exec -w /opt/airflow airflow-scheduler python -m crud.crud_cassandra
 docker compose exec -w /opt/airflow airflow-scheduler python -m crud.crud_neo4j
 ```
-Trabajan sobre registros `demo_*` y los eliminan al final: no alteran los datos del pipeline
-(verificado comparando una foto de las tres bases antes y después).
+
+Trabajan sobre registros `demo_*` y los borran al final, así que no alteran los datos del pipeline.
 
 ## Dashboard
-http://localhost:8501 · filtros de rango (UTC) y subreddits, cinco tarjetas y cinco pestañas: KPIs,
-Actividad (Cassandra), Contenido (MongoDB), Red (Neo4j) y Pipeline (bitácora y rechazados).
-- **Valor del período de cada KPI**: se pondera por volumen (razón de sumas), no es la media de los
-  valores diarios; el crecimiento usa la mediana diaria. El método aparece bajo cada valor.
-- **Razón diaria comentarios / posts** (KPI) y **comentarios por post publicado** (tarjeta, MongoDB) son
-  distintos: la primera compara volúmenes del mismo día; la segunda sigue a cada publicación.
-- El KPI **usuario con más conexiones** es global y acumulado: no responde al filtro de subreddits.
-- Los posts terminan el 31-ago; desde el 1-sep solo hay comentarios tardíos.
 
-## Estructura
-```
-docker-compose.yml      servicios; .env con credenciales locales
-docker/                 Dockerfiles de Airflow y del dashboard
-data/raw/               dataset (parquet); data/staging/ intercambio entre tareas
-dags/reddit_etl_dag.py  DAG diario con las 6 etapas
-etl/                    extract, clean, load_mongo, load_cassandra, load_neo4j, kpis, pipeline
-scripts/                creación de esquemas (init_*.py, *.cql, *.cypher) y reset
-scripts/verificacion/   comprobaciones reproducibles (conteos, fotos antes/después, reproceso corregido)
-crud/                   demos CRUD de las 3 bases
-dashboard/              app Streamlit (app.py), consultas (consultas.py) y prueba sin navegador
-MEJORAS.md              resumen de mejoras · VERIFICACION.md pruebas y evidencia
-```
+http://localhost:8501. Filtros de rango de fechas (UTC) y de subreddits, cinco tarjetas y cinco pestañas:
+KPIs, Actividad (Cassandra), Contenido (MongoDB), Red (Neo4j) y Pipeline. Cada KPI muestra su definición,
+fórmula e interpretación.
 
 ## Verificación
-[VERIFICACION.md](VERIFICACION.md) recoge las pruebas reproducidas (arranque, carga, histórico, reproceso,
-CRUD y dashboard) con sus comandos. Las comprobaciones se pueden repetir con:
-```bash
-docker compose exec -w /opt/airflow airflow-scheduler python -m scripts.verificacion.conteos   # fuente vs. 3 bases
+
+```powershell
+# Conteos esperados desde los parquet frente a lo cargado en las tres bases
+docker compose exec -w /opt/airflow airflow-scheduler python -m scripts.verificacion.conteos
+# Foto de las tres bases antes y después de reprocesar o de correr las demos CRUD
 docker compose exec -w /opt/airflow airflow-scheduler python -m scripts.verificacion.foto guardar /tmp/antes.json
-docker compose exec -w /app dashboard python dashboard/prueba_dashboard.py                    # dashboard sin navegador
+docker compose exec -w /opt/airflow airflow-scheduler python -m scripts.verificacion.foto comparar /tmp/antes.json /tmp/despues.json
+# Dashboard sin navegador
+docker compose exec -w /app dashboard python dashboard/prueba_dashboard.py
 ```
-La prueba de reproceso con datos corregidos es destructiva y se ejecuta en un proyecto aislado
-(instrucciones en `scripts/verificacion/correccion.py`).
 
-## Datos y Git
-El dataset fuente se incluye con su documentación y atribución (`data/raw/README.md`); `data/staging/`,
-las cachés y `.env` quedan fuera de Git.
+Para vaciar los datos y empezar de nuevo (conserva los esquemas):
 
-## Problemas conocidos
-- **Docker Desktop no arranca** con un error tipo `remove ...\dockerInference: The file cannot be accessed by the system`:
-  quedan sockets huérfanos de un cierre forzado. Cerrar Docker y renombrar las carpetas
-  `%LOCALAPPDATA%\Docker\run` y `%LOCALAPPDATA%\docker-secrets-engine`; Docker las recrea al iniciar.
-  Para evitarlo, salir de Docker con *Quit* antes de apagar el equipo.
-- Si Airflow no muestra el DAG recién copiado, esperar ~1 min (escaneo de la carpeta `dags/`).
-- En Git Bash, las rutas tipo `/tmp/...` pasadas a `docker compose` se convierten en rutas de Windows.
-  Usar PowerShell o anteponer `MSYS_NO_PATHCONV=1` al comando.
+```powershell
+docker compose run --rm db-init -m scripts.reset_databases
+```
+
+## Estructura
+
+```
+docker-compose.yml     servicios
+docker/                Dockerfiles de Airflow y del dashboard
+data/raw/              dataset (parquet) con su ficha original
+dags/                  DAG reddit_etl
+etl/                   etapas: extract, clean, load_mongo, load_cassandra, load_neo4j, kpis
+scripts/               creación de las bases (*.cql, *.cypher, init_*.py), reset y verificación
+crud/                  demos CRUD de las tres bases
+dashboard/             app Streamlit y sus consultas
+```
+
+## Problemas frecuentes
+
+- **Airflow no muestra el DAG:** esperar un minuto a que escanee la carpeta `dags/`.
+- **Docker Desktop no arranca después de un apagado forzado:** cerrar Docker, renombrar las carpetas
+  `%LOCALAPPDATA%\Docker\run` y `%LOCALAPPDATA%\docker-secrets-engine` y volver a abrirlo.
+- **Rutas `/tmp/...` en Git Bash:** se convierten en rutas de Windows; usar PowerShell o anteponer `MSYS_NO_PATHCONV=1`.
